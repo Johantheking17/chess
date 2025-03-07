@@ -32,6 +32,7 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
 	private static final String RESOURCES_WQUEEN_PNG = "wqueen.png";
 	private static final String RESOURCES_WPAWN_PNG = "wpawn.png";
 	private static final String RESOURCES_BPAWN_PNG = "bpawn.png";
+    private static final String RESOURCES_NEWPIECE_PNG = "newPiece.png";
 	
 	// Logical and graphical representations of board
 	private final Square[][] board;
@@ -63,6 +64,20 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
       //for (.....)  
 //        	populate the board with squares here. Note that the board is composed of 64 squares alternating from 
 //        	white to black.
+        boolean white = true;
+        for (int i = 0; i < 8; i++){
+            for (int j = 0; j < 8; j++){
+                board[i][j] = new Square(this, white, i, j);
+                this.add(board[i][j]);
+                if (j != 7){
+                    if (white){
+                        white = false;
+                    } else {
+                        white = true;
+                    }
+                }
+            }
+        }
 
         initializePieces();
 
@@ -81,7 +96,7 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
 	//it's up to you how you wish to arrange your pieces.
     private void initializePieces() {
     	
-    	board[0][0].put(new Piece(true, RESOURCES_WKING_PNG));
+    	board[0][0].put(new Piece(true, RESOURCES_NEWPIECE_PNG));
 
     }
 
@@ -142,6 +157,7 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
         repaint();
     }
 
+    
     //TO BE IMPLEMENTED!
     //should move the piece to the desired location only if this is a legal move.
     //use the pieces "legal move" function to determine if this move is legal, then complete it by
@@ -149,13 +165,36 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
     @Override
     public void mouseReleased(MouseEvent e) {
         Square endSquare = (Square) this.getComponentAt(new Point(e.getX(), e.getY()));
-        
-        //using currPiece
+
+        if (currPiece.getLegalMoves(this, fromMoveSquare).contains(endSquare)){
+            //currPiece.leaveTrail(endSquare);
+            endSquare.put(currPiece);
+            fromMoveSquare.put(null);
+        }
+
+        for(Square [] row: board) {
+        	for(Square s: row) {
+        		s.setBorder(null);
+     
+        	}
+        	
+        }
         
        
         fromMoveSquare.setDisplay(true);
         currPiece = null;
         repaint();
+
+        ArrayList<Square> trail = new ArrayList<Square>();
+        if(endSquare.getRow() == fromMoveSquare.getRow() && endSquare.getCol() > fromMoveSquare.getCol()){
+            for(int i = endSquare.getCol()-1; i > fromMoveSquare.getCol(); i--){
+                trail.add(board[endSquare.getRow()][i]);
+            }
+        }
+
+
+        
+
     }
 
     @Override
@@ -163,8 +202,16 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
         currX = e.getX() - 24;
         currY = e.getY() - 24;
 
+        if(currPiece!= null) {
+        	for(Square s: currPiece.getLegalMoves(this, fromMoveSquare)) {
+        		s.setBorder(BorderFactory.createLineBorder(Color.MAGENTA));
+        	}
+        	
+        }
+        
         repaint();
     }
+
 
     @Override
     public void mouseMoved(MouseEvent e) {
