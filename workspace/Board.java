@@ -10,8 +10,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
 import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
+
 
 import javax.swing.*;
 
@@ -28,11 +27,12 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
 	private static final String RESOURCES_BROOK_PNG = "brook.png";
 	private static final String RESOURCES_WKING_PNG = "wking.png";
 	private static final String RESOURCES_BKING_PNG = "bking.png";
-	private static final String RESOURCES_BQUEEN_PNG = "bqueen.png";
-	private static final String RESOURCES_WQUEEN_PNG = "wqueen.png";
 	private static final String RESOURCES_WPAWN_PNG = "wpawn.png";
 	private static final String RESOURCES_BPAWN_PNG = "bpawn.png";
-    private static final String RESOURCES_NEWPIECE_PNG = "newPiece.png";
+    private static final String RESOURCES_BMASON_PNG = "blackMason.png";
+    private static final String RESOURCES_WMASON_PNG = "whiteMason.png";
+    private static final String RESOURCES_UNMOVABLE_PNG = "unmovable.png";
+
 	
 	// Logical and graphical representations of board
 	private final Square[][] board;
@@ -48,6 +48,12 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
     //used to keep track of the x/y coordinates of the mouse.
     private int currX;
     private int currY;
+
+    //ArrayList of squares with Unmovable piece
+    private ArrayList<Square> whiteUnmovables = new ArrayList<Square>();
+    private ArrayList<Square> blackUnmovables = new ArrayList<Square>();
+
+
     
 
     
@@ -96,7 +102,43 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
 	//it's up to you how you wish to arrange your pieces.
     private void initializePieces() {
     	
-    	board[0][0].put(new Piece(true, RESOURCES_NEWPIECE_PNG));
+    	board[7][3].put(new Mason(true, RESOURCES_WMASON_PNG));
+        board[0][3].put(new Mason(false, RESOURCES_BMASON_PNG));
+
+        board[7][4].put(new King(true, RESOURCES_WKING_PNG));
+        board[0][4].put(new King(false, RESOURCES_BKING_PNG));
+
+        board[7][2].put(new Bishop(true, RESOURCES_WBISHOP_PNG));
+        board[7][5].put(new Bishop(true, RESOURCES_WBISHOP_PNG));
+        board[0][2].put(new Bishop(false, RESOURCES_BBISHOP_PNG));
+        board[0][5].put(new Bishop(false, RESOURCES_BBISHOP_PNG));
+
+        board[7][1].put(new Knight(true, RESOURCES_WKNIGHT_PNG));
+        board[7][6].put(new Knight(true, RESOURCES_WKNIGHT_PNG));
+        board[0][1].put(new Knight(false, RESOURCES_BKNIGHT_PNG));
+        board[0][6].put(new Knight(false, RESOURCES_BKNIGHT_PNG));
+
+        board[7][0].put(new Rook(true, RESOURCES_WROOK_PNG));
+        board[7][7].put(new Rook(true, RESOURCES_WROOK_PNG));
+        board[0][0].put(new Rook(false, RESOURCES_BROOK_PNG));
+        board[0][7].put(new Rook(false, RESOURCES_BROOK_PNG));
+
+        board[6][0].put(new Pawn(true, RESOURCES_WPAWN_PNG));
+        board[6][1].put(new Pawn(true, RESOURCES_WPAWN_PNG));
+        board[6][2].put(new Pawn(true, RESOURCES_WPAWN_PNG));
+        board[6][3].put(new Pawn(true, RESOURCES_WPAWN_PNG));
+        board[6][4].put(new Pawn(true, RESOURCES_WPAWN_PNG));
+        board[6][5].put(new Pawn(true, RESOURCES_WPAWN_PNG));
+        board[6][6].put(new Pawn(true, RESOURCES_WPAWN_PNG));
+        board[6][7].put(new Pawn(true, RESOURCES_WPAWN_PNG));
+        board[1][0].put(new Pawn(false, RESOURCES_BPAWN_PNG));
+        board[1][1].put(new Pawn(false, RESOURCES_BPAWN_PNG));
+        board[1][2].put(new Pawn(false, RESOURCES_BPAWN_PNG));
+        board[1][3].put(new Pawn(false, RESOURCES_BPAWN_PNG));
+        board[1][4].put(new Pawn(false, RESOURCES_BPAWN_PNG));
+        board[1][5].put(new Pawn(false, RESOURCES_BPAWN_PNG));
+        board[1][6].put(new Pawn(false, RESOURCES_BPAWN_PNG));
+        board[1][7].put(new Pawn(false, RESOURCES_BPAWN_PNG));
 
     }
 
@@ -115,6 +157,26 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
     public Piece getCurrPiece() {
         return this.currPiece;
     }
+
+    //precondition - the board is initialized and contains a king of either color. The boolean kingColor corresponds to the color of the king we wish to know the status of.
+          //postcondition - returns true of the king is in check and false otherwise.
+	public boolean isInCheck(boolean kingColor){
+		for (int i = 0; i < 8; i++){
+            for (int j = 0; j < 8; j++){
+                if (board[i][j].isOccupied()){
+                    if (board[i][j].getOccupyingPiece().getColor() != kingColor){
+                        ArrayList<Square> controlled = board[i][j].getOccupyingPiece().getControlledSquares(board, board[i][j]);
+                        for (int k = 0; k < controlled.size(); k++){
+                            if (controlled.get(k).getOccupyingPiece() instanceof King && controlled.get(k).getOccupyingPiece().getColor() == kingColor){
+                                    return true;
+                                }
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }    
 
     @Override
     public void paintComponent(Graphics g) {
@@ -165,11 +227,110 @@ public class Board extends JPanel implements MouseListener, MouseMotionListener 
     @Override
     public void mouseReleased(MouseEvent e) {
         Square endSquare = (Square) this.getComponentAt(new Point(e.getX(), e.getY()));
+        Piece endSquarePiece = endSquare.getOccupyingPiece();
 
         if (currPiece.getLegalMoves(this, fromMoveSquare).contains(endSquare)){
             //currPiece.leaveTrail(endSquare);
             endSquare.put(currPiece);
             fromMoveSquare.put(null);
+            if (isInCheck(currPiece.getColor()) || (currPiece.getColor() != whiteTurn)){
+                fromMoveSquare.put(currPiece);
+                endSquare.put(endSquarePiece);
+            } else {
+                //This is the code for determining where the unmovable piece go and when they disappear
+                if (currPiece.getColor()){
+                    for (Square square: blackUnmovables){
+                        square.put(null);
+                    } 
+                    blackUnmovables.clear();
+                } else {
+                    for (Square square: whiteUnmovables){
+                        square.put(null);
+                    }
+                    whiteUnmovables.clear();
+                }
+                if (currPiece instanceof Mason){
+                    if (endSquare.getCol() == fromMoveSquare.getCol() && endSquare.getRow() > fromMoveSquare.getRow()){
+                        for(int i = fromMoveSquare.getRow() + 1; i < endSquare.getRow(); i++){
+                            if (currPiece.getColor()){
+                                whiteUnmovables.add(board[i][endSquare.getCol()]);
+                            } else {
+                                blackUnmovables.add(board[i][endSquare.getCol()]);
+                            }
+                        }
+                    }
+                    else if (endSquare.getCol() == fromMoveSquare.getCol() && endSquare.getRow() < fromMoveSquare.getRow()){
+                        for(int i = endSquare.getRow() + 1; i < fromMoveSquare.getRow(); i++){
+                            if (currPiece.getColor()){
+                                whiteUnmovables.add(board[i][endSquare.getCol()]);
+                            } else {
+                                blackUnmovables.add(board[i][endSquare.getCol()]);
+                            }
+                        }
+                    }
+                    else if (endSquare.getCol() > fromMoveSquare.getCol() && endSquare.getRow() == fromMoveSquare.getRow()){
+                        for(int i = fromMoveSquare.getCol() + 1; i < endSquare.getCol(); i++){
+                            if (currPiece.getColor()){
+                                whiteUnmovables.add(board[endSquare.getRow()][i]);
+                            } else {
+                                blackUnmovables.add(board[endSquare.getRow()][i]);
+                            }
+                        }
+                    }
+                    else if (endSquare.getCol() < fromMoveSquare.getCol() && endSquare.getRow() == fromMoveSquare.getRow()){
+                        for(int i = endSquare.getCol() + 1; i < fromMoveSquare.getCol(); i++){
+                            if (currPiece.getColor()){
+                                whiteUnmovables.add(board[endSquare.getRow()][i]);
+                            } else {
+                                blackUnmovables.add(board[endSquare.getRow()][i]);
+                            }
+                        }
+                    }
+                    else if (endSquare.getCol() > fromMoveSquare.getCol() && endSquare.getRow() > fromMoveSquare.getRow()){
+                        for(int i = 1; i < endSquare.getCol()-fromMoveSquare.getCol(); i++){
+                            if (currPiece.getColor()){
+                                whiteUnmovables.add(board[fromMoveSquare.getRow() + i][fromMoveSquare.getCol() + i]);
+                            } else {
+                                blackUnmovables.add(board[fromMoveSquare.getRow() + i][fromMoveSquare.getCol() + i]);
+                            }
+                        }
+                    }
+                    else if (endSquare.getCol() < fromMoveSquare.getCol() && endSquare.getRow() < fromMoveSquare.getRow()){
+                        for(int i = 1; i < fromMoveSquare.getCol()-endSquare.getCol(); i++){
+                            if (currPiece.getColor()){
+                                whiteUnmovables.add(board[endSquare.getRow() + i][endSquare.getCol() + i]);
+                            } else {
+                                blackUnmovables.add(board[endSquare.getRow() + i][endSquare.getCol() + i]);
+                            }
+                        }
+                    }
+                    else if (endSquare.getCol() > fromMoveSquare.getCol() && endSquare.getRow() < fromMoveSquare.getRow()){
+                        for(int i = 1; i < endSquare.getCol()-fromMoveSquare.getCol(); i++){
+                            if (currPiece.getColor()){
+                                whiteUnmovables.add(board[fromMoveSquare.getRow() - i][fromMoveSquare.getCol() + i]);
+                            } else {
+                                blackUnmovables.add(board[fromMoveSquare.getRow() - i][fromMoveSquare.getCol() + i]);
+                            }
+                        }
+                    }
+                    else if (endSquare.getCol() < fromMoveSquare.getCol() && endSquare.getRow() > fromMoveSquare.getRow()){
+                        for(int i = 1; i < fromMoveSquare.getCol()-endSquare.getCol(); i++){
+                            if (currPiece.getColor()){
+                                whiteUnmovables.add(board[endSquare.getRow() - i][endSquare.getCol() + i]);
+                            } else {
+                                blackUnmovables.add(board[endSquare.getRow() - i][endSquare.getCol() + i]);
+                            }
+                        }
+                    }
+                    for (Square square: whiteUnmovables){
+                        square.put(new Unmovable(RESOURCES_UNMOVABLE_PNG));
+                    }
+                    for (Square square: blackUnmovables){
+                        square.put(new Unmovable(RESOURCES_UNMOVABLE_PNG));
+                    }
+                }
+                whiteTurn = !whiteTurn;
+            }
         }
 
         for(Square [] row: board) {
